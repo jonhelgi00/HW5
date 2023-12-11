@@ -9,6 +9,7 @@ import se.kth.jabeja.rand.RandNoGenerator;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.lang.Math;
 
 public class Jabeja {
   final static Logger logger = Logger.getLogger(Jabeja.class);
@@ -17,8 +18,9 @@ public class Jabeja {
   private final List<Integer> nodeIds;
   private int numberOfSwaps;
   private int round;
-  private float T;
+  private double T;
   private boolean resultFileCreated = false;
+  private double alpha_T;
 
   //-------------------------------------------------------------------
   public Jabeja(HashMap<Integer, Node> graph, Config config) {
@@ -27,7 +29,9 @@ public class Jabeja {
     this.round = 0;
     this.numberOfSwaps = 0;
     this.config = config;
-    this.T = config.getTemperature();
+    // this.T = config.getTemperature();
+    this.T = 2;
+    // this.alpha_T = 0.85;
   }
 
 
@@ -40,6 +44,10 @@ public class Jabeja {
 
       //one cycle for all nodes have completed.
       //reduce the temperature
+      if (round == 400)
+      {
+        T = 2;
+      }
       saCoolDown();
       report();
     }
@@ -51,9 +59,11 @@ public class Jabeja {
   private void saCoolDown(){
     // TODO for second task
     if (T > 1)
-      T -= config.getDelta();
+      // T -= config.getDelta();
+      T -= 0.01;
     if (T < 1)
       T = 1;
+    // this.T = this.T * this.alpha_T;
   }
 
   /**
@@ -63,6 +73,7 @@ public class Jabeja {
   private void sampleAndSwap(int nodeId) {
     Node partner = null;
     Node nodep = entireGraph.get(nodeId);
+    
 
     if (config.getNodeSelectionPolicy() == NodeSelectionPolicy.HYBRID
       || config.getNodeSelectionPolicy() == NodeSelectionPolicy.LOCAL) {
@@ -95,6 +106,7 @@ public class Jabeja {
 
     Node bestPartner = null;
     double highestBenefit = 0;
+    double alpha = 2.0;
     // TODO
     int N = nodes.length;
     for (int i = 0;i < N; i++)
@@ -102,17 +114,27 @@ public class Jabeja {
       Node possible_partner = entireGraph.get(nodes[i]);
       int dpp = getDegree(nodep, nodep.getColor());
       int dqq = getDegree(possible_partner, possible_partner.getColor());
-      int old = dpp + dqq;
+      double old = Math.pow(dpp, alpha) + Math.pow(dqq,alpha);
       int dpq = getDegree(nodep, possible_partner.getColor());
       int dqp = getDegree(possible_partner, nodep.getColor());
-      int new_ = dpq + dqp;
+      double new_ = Math.pow(dpq,alpha) + Math.pow(dqp,alpha);
       if (new_ * this.T > old && new_ > highestBenefit) 
       {
         bestPartner = possible_partner;
         highestBenefit = new_;
       }
+      // if (acceptanceMove(new_, old))
+      // {
+      //   bestPartner = possible_partner;
+      //   break;
+      // }
     }
     return bestPartner;
+  }
+
+  public boolean acceptanceMove(double new_, double old)
+  {
+    return Math.exp((new_ - old)/this.T) > Math.random();
   }
 
   /**
